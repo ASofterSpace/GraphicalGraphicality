@@ -4,7 +4,7 @@
 	</head>
 
 	<body>
-		<canvas id="output" width="1000" height="500" style="width:1000px;height:500px;">
+		<canvas id="output" width="1000" height="500" style="width:1000px;height:500px;" onclick="drawAll()">
 			Ooops, your browser does not seem to support the HTML5 canvas - please use a newer browser!
 		</canvas>
 
@@ -14,36 +14,86 @@
 
 		<button onclick="decreaseSize()">Smaller!</button>
 
+		<span id="magicnumbers"></button>
+
 		<script type="text/javascript">
 
+// the amount of pixels in both directions that is taken up by this fun
 width = 1000;
 height = 500;
 
+// the values for sin(x) and cos(x) again as taken up by this fun
+sins = [];
+coss = [];
+
+// top and bottom values, just as sins and coss, but tops is ALWAYS smaller than btms (so sins and coss re-ordered)
+tops = [];
+btms = [];
+
+function calculateTopsAndBtms() {
+
+	var magicnumber1 = Math.random()*5 + 10;
+	var magicnumber2 = Math.random() + 1;
+	
+	document.getElementById('magicnumbers').innerHTML = "Magic number 1: " + magicnumber1 + " Magic number 2: " + magicnumber2;
+	
+	sins = [];
+	coss = [];
+	tops = [];
+	btms = [];
+
+	for (var x = 0; x < width; x++) {
+		if (x < width/2) {
+			sins[x] = height/2 + height*x/width + (width/magicnumber1)*Math.sin(x/(width/magicnumber1));
+			coss[x] = height/2 - height*x/width + (width/magicnumber1)*Math.sin((x/(width/magicnumber1))+magicnumber2);
+		} else {
+			sins[x] = height/2 - height + (height*x/width) + (width/magicnumber1)*Math.sin(x/(width/magicnumber1));
+			coss[x] = height/2 + height - (height*x/width) + (width/magicnumber1)*Math.sin((x/(width/magicnumber1))+magicnumber2);
+		}
+
+		if (sins[x] < coss[x]) {
+			tops[x] = sins[x];
+			btms[x] = coss[x];
+		} else {
+			tops[x] = coss[x];
+			btms[x] = sins[x];
+		}
+	}
+}
+
 function calcSin(x) {
-	return height/2 + (width/12.5)*Math.sin(x/(width/12.5));
+	return tops[x];
 }
 
 function calcCos(x) {
-	return height/2 + (width/12.5)*Math.sin((x/(width/12.5))+1.57);
+	return btms[x];
 }
 
-function drawCosBack(ctx, origx, origy, comparator) {
+function drawCosBackCircles(ctx, origx, origy) {
 
+	var origx = width-1;
+	var origy = calcSin(origx);
+	
+	ctx.fillStyle="#FFFFFF";
 	var cosx=origx-1;
 	var siny = calcSin(cosx);
 	var cosy = calcCos(cosx);
-	for (; (cosx > -1) && comparator(siny, cosy); cosx--) {
+	
+	for (; (cosx > -1); cosx--) {
 		siny = calcSin(cosx);
 		cosy = calcCos(cosx);
-		ctx.lineTo(cosx, cosy);
+		if (Math.abs(siny - cosy) > 100 - Math.random() * 95) {
+			ctx.beginPath();
+			ctx.arc(cosx, cosy + (Math.random() * (siny - cosy)), Math.random() * (width/150), 0, 2 * Math.PI);
+			ctx.fill();
+		}
 	}
-	ctx.fill();
-	ctx.beginPath();
-	ctx.moveTo(origx, origy);
 }
 
 function drawAll() {
-	
+
+	calculateTopsAndBtms();
+
 	var canvas = document.getElementById('output');
 	var ctx = canvas.getContext("2d");
 	
@@ -53,33 +103,13 @@ function drawAll() {
 	ctx.lineTo(width, height);
 	ctx.lineTo(0, height);
 	ctx.lineTo(0, 0);
-	ctx.stroke();
+	ctx.fillStyle="#000000";
+	ctx.fill();
 	
-	// draw sine
-	ctx.beginPath();
-	ctx.moveTo(0, calcSin(0));
+	// draw circles inside sine and cosine
 	var checkSmaller = false;
-	
-	for (var sinx=0; sinx < width; sinx++) {
-	
-		var siny = calcSin(sinx);
-		var cosy = calcCos(sinx);
-		ctx.lineTo(sinx, siny);
-	
-		if (checkSmaller && (siny < cosy)) {
-			drawCosBack(ctx, sinx, siny, function (s, c) {return s > c;});
-			checkSmaller = !checkSmaller;
-		} else if ((!checkSmaller) && (siny > cosy)) {
-			drawCosBack(ctx, sinx, siny, function (s, c) {return s < c;});
-			checkSmaller = !checkSmaller;
-		}
-	}
-	
-	if (checkSmaller) {
-		drawCosBack(ctx, sinx, siny, function (s, c) {return s > c;});
-	} else {
-		drawCosBack(ctx, sinx, siny, function (s, c) {return s < c;});
-	}
+
+	drawCosBackCircles(ctx);
 }
 
 function increaseSize() {
@@ -104,8 +134,8 @@ function updateSize() {
 
 	canvas.width = width;
 	canvas.height = height;
-	canvas.style.width = width;
-	canvas.style.height = height;
+	canvas.style.width = width + "px";
+	canvas.style.height = height + "px";
 
 	drawAll();
 }
